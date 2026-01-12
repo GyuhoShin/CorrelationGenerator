@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import os
 
-year = "2022"
+year = "2023"
 dataset = "acs/acs1/profile"
 base_url = f"https://api.census.gov/data/{year}/{dataset}"
 
@@ -29,8 +29,9 @@ variables = {
     "DP03_0024PE": "Work From Home Pct",
     "DP03_0025E": "Mean Commute Time",
     "DP03_0021PE": "Public Transit Pct",
-    "DP02_0033PE": "Never Married Male",   # % Males 15+ never married
-    "DP02_0039PE": "Never Married Female", # % Females 15+ never married
+    "DP02_0002PE": "Married Couple Household Pct",  # % Married Couple Households
+    #"DP02_0027PE": "Married Male (15 and over)",   # % Males 15+ never married
+    #"DP02_0033PE": "Married Female (15 and over)", # % Females 15+ married
     "DP02_0022PE": "Non Family House Pct",  # % People living alone/with roommates (Urbanization proxy)
 }
 
@@ -62,7 +63,7 @@ if response.status_code == 200:
         # Demographics
         "Total Population", "Population Under 18 Pct", "Population Over 65 Pct", 
         "Foreign Born Pct", "Non English Home Pct", 
-        "Never Married Male", "Never Married Female",
+        "Married Couple Household Pct",
         # Economy & Wealth
         "Median Income", "Poverty Rate", "Unemployment Rate", 
         "Food Stamps Pct", "Uninsured Pct", "Income Over 200k Pct",

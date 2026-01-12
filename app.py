@@ -30,7 +30,7 @@ with st.sidebar:
         "👥 Demographics": [
             "Total Population", "Population Under 18 Pct", "Population Over 65 Pct", 
             "Foreign Born Pct", "Non English Home Pct", 
-            "Never Married Male", "Never Married Female"
+            "Married Couple Household Pct"
         ],
         "💰 Economy & Wealth": [
             "Median Income", "Poverty Rate", "Unemployment Rate", 
@@ -112,3 +112,9 @@ with st.expander("🔎 View Raw Data"):
     selected_cols = ["State", x_var, y_var]
     selected_cols = list(dict.fromkeys(selected_cols))
     st.dataframe(df[selected_cols], height=1823)
+
+st.divider()
+st.markdown("### 📝 Data Source")
+st.caption("""
+**Source:** U.S. Census Bureau, 2024 American Community Survey (ACS) 1-Year Estimates.  
+""")
