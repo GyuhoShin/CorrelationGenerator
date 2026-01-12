@@ -114,14 +114,14 @@ with st.expander("🔎 View Raw Data"):
     st.dataframe(df[selected_cols], height=1823)
 
 st.divider()
-st.markdown("### 📝 Data Source")
+st.caption("### Additional information")
 st.caption("""
 **Source:** U.S. Census Bureau, 2024 American Community Survey (ACS) 1-Year Estimates.  
 """)
-st.markdown("#### 👨‍💻 About the Author")
-st.markdown("""
+st.caption("#### About the Author")
+st.caption("""
 **Gyuho Shin** Ph.D. Candidate & Instructor  
 Department of Sociology, Stony Brook University  
 
-*This tool was developed for educational purposes to help students visualize sociological data.*
+*This tool was developed for educational purposes to help students understand correlation coefficients by visualizing real-world data.*
 """)
