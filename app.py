@@ -118,3 +118,10 @@ st.markdown("### 📝 Data Source")
 st.caption("""
 **Source:** U.S. Census Bureau, 2024 American Community Survey (ACS) 1-Year Estimates.  
 """)
+st.markdown("#### 👨‍💻 About the Author")
+st.markdown("""
+**Gyuho Shin** Ph.D. Candidate & Instructor  
+Department of Sociology, Stony Brook University  
+
+*This tool was developed for educational purposes to help students visualize sociological data.*
+""")
