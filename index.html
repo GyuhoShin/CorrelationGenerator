@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>Correlation Explorer — US State Data</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --primary: #2D4A3E;          /* grove green — data marker, focused links */
+    --primary-strong: #233a30;
+    --primary-tint: #ECF1ED;
+    --accent: #C8923A;            /* warm gold — regression line, focus ring */
+    --accent-tint: #F5E5C7;
+
+    --bg: #FFFFFF;
+    --bg-sunken: #F7F8FA;
+    --bg-row-hover: #F4F5F7;
+
+    --fg-1: #1A1D23;
+    --fg-2: #3D4148;
+    --fg-3: #6B7280;
+    --fg-4: #9CA3AF;
+
+    --border: #E5E7EB;
+    --border-soft: #EEF0F4;
+    --border-strong: #D1D5DB;
+
+    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 6px rgba(15, 23, 42, 0.04);
+
+    --font-sans: 'Source Sans 3', 'Source Sans Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif;
+
+    --ease: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--fg-1);
+    color-scheme: light;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ───────── header ───────── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg);
+    gap: 16px;
+  }
+  .header-left {
+    display: flex; align-items: center; gap: 14px;
+    min-width: 0;
+  }
+  .sidebar-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--fg-2);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 120ms var(--ease), border-color 120ms var(--ease), color 120ms var(--ease);
+  }
+  .sidebar-toggle:hover {
+    background: var(--bg-sunken);
+    border-color: var(--border-strong);
+    color: var(--fg-1);
+  }
+  .sidebar-toggle:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(200,146,58,0.16);
+  }
+  .sidebar-toggle svg { display: block; }
+  .page-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--fg-1);
+    letter-spacing: -0.01em;
+  }
+  .page-title .sep { color: var(--border-strong); margin: 0 8px; font-weight: 400; }
+  .page-title .sub { color: var(--fg-3); font-weight: 400; }
+  .header .attr {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--fg-3);
+    text-align: right;
+    line-height: 1.4;
+  }
+  .header .attr strong { color: var(--fg-2); font-weight: 600; }
+
+  /* ───────── layout ───────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: calc(100vh - 60px);
+    transition: grid-template-columns 220ms var(--ease);
+  }
+  .layout.sidebar-collapsed {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+
+  /* ───────── sidebar ───────── */
+  .sidebar {
+    background: var(--bg-sunken);
+    border-right: 1px solid var(--border-soft);
+    padding: 24px 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: padding 220ms var(--ease), border-right-color 220ms var(--ease), opacity 160ms var(--ease);
+  }
+  .layout.sidebar-collapsed .sidebar {
+    padding-left: 0;
+    padding-right: 0;
+    border-right-color: transparent;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sb-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg-1);
+    margin-bottom: 16px;
+    letter-spacing: -0.005em;
+  }
+  .category { margin-bottom: 20px; }
+  .category:last-child { margin-bottom: 0; }
+  .category-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fg-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+    margin-bottom: 6px;
+  }
+  .var-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px;
+    margin: 0 -8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--fg-2);
+    line-height: 1.4;
+    transition: background 120ms var(--ease), color 120ms var(--ease);
+  }
+  .var-item:hover { background: var(--bg-row-hover); color: var(--fg-1); }
+  .var-item .name { flex: 1; min-width: 0; }
+  .var-item .pills { display: flex; gap: 3px; opacity: 0; transition: opacity 120ms var(--ease); }
+  .var-item:hover .pills { opacity: 1; }
+  .var-item.has-active .pills { opacity: 1; }
+  .pill {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg);
+    color: var(--fg-3);
+    cursor: pointer;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+    transition: all 120ms var(--ease);
+  }
+  .pill:hover { border-color: var(--fg-2); color: var(--fg-1); }
+  .pill.active.y { background: var(--primary); border-color: var(--primary); color: #FFFFFF; }
+  .pill.active.x { background: var(--accent); border-color: var(--accent); color: #1A1D23; }
+  .var-item.assigned-y, .var-item.assigned-x { color: var(--fg-1); font-weight: 500; }
+
+  /* ───────── main ───────── */
+  main {
+    padding: 28px 40px 56px;
+    max-width: 1500px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* axis pickers row */
+  .axis-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 14px;
+    align-items: end;
+    margin-bottom: 22px;
+  }
+  .axis-picker { display: flex; flex-direction: column; gap: 6px; }
+  .axis-picker .lab {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fg-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .axis-picker .lab .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .axis-picker.y .dot { background: var(--primary); }
+  .axis-picker.x .dot { background: var(--accent); }
+  .axis-picker select {
+    width: 100%;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 9px 36px 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background-color: var(--bg);
+    color: var(--fg-1);
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='1,1.5 6,6.5 11,1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+    transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease);
+  }
+  .axis-picker select:hover { border-color: var(--border-strong); }
+  .axis-picker select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(200,146,58,0.16);
+  }
+  .swap-btn {
+    margin-bottom: 1px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 12px;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--fg-2);
+    transition: all 120ms var(--ease);
+  }
+  .swap-btn:hover { background: var(--bg-sunken); border-color: var(--border-strong); color: var(--fg-1); }
+
+  /* chart + stats side-by-side — stats acts as the headline finding for the chart */
+  .chart-stats-row {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+    align-items: stretch;
+  }
+
+  /* chart card */
+  .chart-card {
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    padding: 18px 18px 10px;
+  }
+  #chart { width: 100%; height: 560px; }
+
+  /* stats panel — sits to the LEFT of the chart, vertical stack */
+  .stats-card {
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    padding: 22px;
+    display: flex; flex-direction: column;
+  }
+  .stats-hd {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fg-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .stats-row {
+    display: flex; flex-direction: column;
+    gap: 22px;
+  }
+  .stat-cell .lab {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fg-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .stat-cell .val {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 28px;
+    line-height: 1.1;
+    color: var(--fg-1);
+    font-variant-numeric: tabular-nums lining-nums;
+    letter-spacing: -0.01em;
+  }
+  .stat-cell .val.eq {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+    word-break: break-word;
+    color: var(--fg-1);
+  }
+
+  /* try these */
+
+  /* data details */
+  details.data {
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    padding: 0;
+    overflow: hidden;
+  }
+  details.data summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--fg-1);
+    display: flex; align-items: center; gap: 10px;
+  }
+  details.data summary::-webkit-details-marker { display: none; }
+  details.data summary::before {
+    content: '';
+    width: 0; height: 0;
+    border-left: 5px solid var(--fg-3);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform 120ms var(--ease);
+  }
+  details.data[open] summary::before { transform: rotate(90deg); }
+  details.data summary .count {
+    font-size: 12px;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums lining-nums;
+    margin-left: auto;
+  }
+  .table-wrap {
+    max-height: 420px;
+    overflow: auto;
+    border-top: 1px solid var(--border-soft);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td {
+    text-align: left;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  td:not(:first-child), th:not(:first-child) {
+    text-align: right;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-size: 13px;
+  }
+  td:first-child { color: var(--fg-1); }
+  th {
+    position: sticky; top: 0;
+    background: var(--bg-sunken);
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--fg-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr:hover td { background: var(--bg-sunken); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* footer */
+  .footer {
+    margin-top: 36px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-soft);
+    color: var(--fg-3);
+    font-size: 13px;
+    line-height: 1.6;
+    display: flex; flex-direction: column;
+    gap: 16px;
+    text-wrap: pretty;
+  }
+  .footer p { margin: 0; }
+  .footer .src-label {
+    display: block;
+    font-weight: 600;
+    color: var(--fg-2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .footer .author strong { color: var(--fg-1); font-weight: 600; }
+
+  /* responsive */
+  @media (max-width: 1100px) {
+    .chart-stats-row { grid-template-columns: 1fr; }
+    .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 24px; }
+  }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border-soft); }
+    main { padding: 24px 20px 48px; }
+    .axis-row { grid-template-columns: 1fr; }
+    .swap-btn { margin: 0; align-self: center; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    #chart { height: 420px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Toggle variables panel" aria-expanded="true" aria-controls="sidebar" title="Toggle variables panel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+    </button>
+    <div class="page-title">Correlation Explorer<span class="sep">·</span><span class="sub">US State Data</span></div>
+  </div>
+</header>
+
+<div class="layout" id="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-title">Variables</div>
+    <div id="variableList"></div>
+  </aside>
+
+  <main>
+    <div class="axis-row">
+      <div class="axis-picker y">
+        <label class="lab" for="ySelect"><span class="dot"></span>Vertical axis — Y</label>
+        <select id="ySelect"></select>
+      </div>
+      <button class="swap-btn" id="swapBtn" title="Swap X and Y">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>
+        swap
+      </button>
+      <div class="axis-picker x">
+        <label class="lab" for="xSelect"><span class="dot"></span>Horizontal axis — X</label>
+        <select id="xSelect"></select>
+      </div>
+    </div>
+
+    <div class="chart-stats-row">
+      <div class="stats-card">
+        <div class="stats-hd">Statistics</div>
+        <div class="stats-row">
+          <div class="stat-cell">
+            <div class="lab">Correlation (r)</div>
+            <div class="val" id="rVal">—</div>
+          </div>
+          <div class="stat-cell">
+            <div class="lab">Regression equation</div>
+            <div class="val eq" id="eqVal">—</div>
+          </div>
+          <div class="stat-cell">
+            <div class="lab">R-Squared (r²)</div>
+            <div class="val" id="r2Val">—</div>
+          </div>
+          <div class="stat-cell">
+            <div class="lab">P-value</div>
+            <div class="val" id="pVal">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div id="chart"></div>
+      </div>
+    </div>
+
+    <details class="data">
+      <summary><span>Raw data</span><span class="count" id="rowCount"></span></summary>
+      <div class="table-wrap" id="dataTable"></div>
+    </details>
+
+    <div class="footer">
+      <div>
+        <span class="src-label">About</span>
+        <p>An interactive tool for exploring correlations between socioeconomic variables across the 50 U.S. states and the District of Columbia. Pick any pair of variables to see a scatter plot with an OLS regression line and the corresponding statistics.</p>
+      </div>
+      <div>
+        <span class="src-label">Source</span>
+        <p>U.S. Census Bureau, 2023 American Community Survey (ACS) 1-Year Estimates.</p>
+      </div>
+      <div>
+        <span class="src-label">Author</span>
+        <p class="author"><strong>Shin Gyuho</strong> — Ph.D. Candidate &amp; Instructor, Department of Sociology, Stony Brook University.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ============================================================
+//  Configuration
+// ============================================================
+
+const categories = {
+  "Demographics": [
+    "Total Population", "Population Under 18 Pct", "Population Over 65 Pct",
+    "Foreign Born Pct", "Non English Home Pct", "Married Couple Household Pct"
+  ],
+  "Economy & wealth": [
+    "Median Income", "Poverty Rate", "Unemployment Rate",
+    "Food Stamps Pct", "Uninsured Pct", "Income Over 200k Pct"
+  ],
+  "Education": [
+    "Bachelor Degree Pct", "High School Grad Pct"
+  ],
+  "Housing & lifestyle": [
+    "Total Housing Units", "Work From Home Pct", "Mean Commute Time",
+    "Public Transit Pct", "Non Family House Pct"
+  ],
+};
+
+// curated teaching pairings removed per user request
+
+// Per-variable unit metadata — rescales display only; r/r²/p are unchanged.
+const unitConfig = {
+  "Total Population":    { scale: 1e-6, unit: "M" },
+  "Total Housing Units": { scale: 1e-6, unit: "M" },
+  "Median Income":       { scale: 1e-3, unit: "k" },
+};
+
+function displayName(col) {
+  const c = unitConfig[col];
+  return c ? `${col} (${c.unit})` : col;
+}
+function scaleOf(col) { return unitConfig[col]?.scale ?? 1; }
+
+// ============================================================
+//  CSV parsing
+// ============================================================
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(",");
+  return lines.slice(1).map(line => {
+    const vals = line.split(",");
+    const obj = {};
+    headers.forEach((h, i) => {
+      const v = vals[i];
+      const n = Number(v);
+      obj[h] = (v === "" || v === undefined || Number.isNaN(n)) ? v : n;
+    });
+    return obj;
+  });
+}
+
+// ============================================================
+//  Statistics
+// ============================================================
+function mean(arr) { let s = 0; for (const v of arr) s += v; return s / arr.length; }
+
+function pearson(xs, ys) {
+  const n = xs.length;
+  const mx = mean(xs), my = mean(ys);
+  let num = 0, dx2 = 0, dy2 = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mx, dy = ys[i] - my;
+    num += dx * dy;
+    dx2 += dx * dx;
+    dy2 += dy * dy;
+  }
+  return num / Math.sqrt(dx2 * dy2);
+}
+
+function ols(xs, ys) {
+  const n = xs.length;
+  const mx = mean(xs), my = mean(ys);
+  let num = 0, denom = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mx;
+    num += dx * (ys[i] - my);
+    denom += dx * dx;
+  }
+  const slope = num / denom;
+  const intercept = my - slope * mx;
+  return { slope, intercept };
+}
+
+// Two-tailed p via incomplete beta — identical to scipy.stats.pearsonr
+function logGamma(x) {
+  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+             -1.231739572450155, 0.001208650973866179, -0.000005395239384953];
+  let sum = 1.000000000190015;
+  let y = x;
+  for (let i = 0; i < 6; i++) sum += c[i] / ++y;
+  return (x + 0.5) * Math.log(x + 5.5) - (x + 5.5)
+       + Math.log(2.5066282746310005 * sum / x);
+}
+function betacf(a, b, x) {
+  const MAXIT = 200, EPS = 3e-7, FPMIN = 1e-30;
+  const qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1;
+  let d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d;  if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c;  if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d;  if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c;  if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+function betainc(a, b, x) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const bt = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b)
+                      + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2)
+    ? bt * betacf(a, b, x) / a
+    : 1 - bt * betacf(b, a, 1 - x) / b;
+}
+function pearsonPValue(r, n) {
+  if (n < 3) return NaN;
+  const df = n - 2;
+  if (Math.abs(r) >= 1) return 0;
+  const x = df / (df + (r * r * df) / (1 - r * r));
+  return betainc(df / 2, 0.5, x);
+}
+
+// ============================================================
+//  App
+// ============================================================
+let DATA = [];
+let NUMERIC_COLS = [];
+
+function renderSidebar() {
+  const ySel = document.getElementById("ySelect");
+  const xSel = document.getElementById("xSelect");
+  const container = document.getElementById("variableList");
+  const yVar = ySel.value, xVar = xSel.value;
+  let html = "";
+  for (const [cat, vars] of Object.entries(categories)) {
+    html += `<div class="category"><div class="category-title">${cat}</div>`;
+    for (const v of vars) {
+      if (!NUMERIC_COLS.includes(v)) continue;
+      const isY = v === yVar, isX = v === xVar;
+      const cls = `var-item${isY ? ' assigned-y has-active' : ''}${isX ? ' assigned-x has-active' : ''}`;
+      html += `
+        <div class="${cls}" data-var="${v}">
+          <span class="name">${displayName(v)}</span>
+          <span class="pills">
+            <button class="pill y ${isY ? 'active' : ''}" data-axis="y" data-var="${v}" title="Set as Y">Y</button>
+            <button class="pill x ${isX ? 'active' : ''}" data-axis="x" data-var="${v}" title="Set as X">X</button>
+          </span>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.pill').forEach(b => {
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const axis = b.dataset.axis;
+      const v = b.dataset.var;
+      if (axis === 'y') ySel.value = v;
+      else xSel.value = v;
+      update();
+    });
+  });
+}
+
+function populateSelects() {
+  const ySel = document.getElementById("ySelect");
+  const xSel = document.getElementById("xSelect");
+  for (const col of NUMERIC_COLS) {
+    const optY = document.createElement("option");
+    optY.value = col; optY.textContent = displayName(col);
+    ySel.appendChild(optY);
+    const optX = document.createElement("option");
+    optX.value = col; optX.textContent = displayName(col);
+    xSel.appendChild(optX);
+  }
+  const defaultY = "Bachelor Degree Pct", defaultX = "Median Income";
+  ySel.value = NUMERIC_COLS.includes(defaultY) ? defaultY : NUMERIC_COLS[0];
+  xSel.value = NUMERIC_COLS.includes(defaultX) ? defaultX : NUMERIC_COLS[1] || NUMERIC_COLS[0];
+  ySel.addEventListener("change", update);
+  xSel.addEventListener("change", update);
+  document.getElementById('swapBtn').addEventListener('click', () => {
+    const a = ySel.value; ySel.value = xSel.value; xSel.value = a;
+    update();
+  });
+}
+
+function formatEquation(intercept, slope) {
+  const sign = slope >= 0 ? "+" : "−";
+  return `Y = ${intercept.toFixed(2)} ${sign} ${Math.abs(slope).toFixed(2)} · X`;
+}
+
+function update() {
+  const xVar = document.getElementById("xSelect").value;
+  const yVar = document.getElementById("ySelect").value;
+
+  const sx = scaleOf(xVar), sy = scaleOf(yVar);
+  const rows = DATA.filter(d => typeof d[xVar] === "number" && typeof d[yVar] === "number");
+  const xs = rows.map(d => d[xVar] * sx);
+  const ys = rows.map(d => d[yVar] * sy);
+  const names = rows.map(d => d.State);
+  const n = xs.length;
+
+  const r = pearson(xs, ys);
+  const r2 = r * r;
+  const { slope, intercept } = ols(xs, ys);
+  const p = pearsonPValue(r, n);
+
+  const xLab = displayName(xVar);
+  const yLab = displayName(yVar);
+
+  document.getElementById("rVal").textContent  = r.toFixed(3);
+  document.getElementById("r2Val").textContent = r2.toFixed(3);
+  document.getElementById("pVal").textContent  = p < 0.001 ? "< 0.001" : p.toFixed(3);
+  document.getElementById("eqVal").textContent = formatEquation(intercept, slope);
+
+  // chart
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const xRange = xMax - xMin;
+  const lineX = [xMin - xRange * 0.02, xMax + xRange * 0.02];
+  const lineY = lineX.map(v => intercept + slope * v);
+
+  const axisFont  = { family: 'Source Sans 3, sans-serif', size: 12, color: '#3D4148' };
+  const titleFont = { family: 'Source Sans 3, sans-serif', size: 15, weight: 500, color: '#1A1D23' };
+  const tickFont  = { family: 'Source Sans 3, sans-serif', size: 11, color: '#6B7280' };
+
+  Plotly.react("chart", [
+    {
+      type: "scatter", mode: "lines",
+      x: lineX, y: lineY,
+      line: { color: '#C8923A', width: 2 },
+      hoverinfo: "skip",
+      name: "OLS fit",
+      showlegend: false,
+    },
+    {
+      type: "scatter", mode: "markers",
+      x: xs, y: ys, text: names,
+      hovertemplate: `<b>%{text}</b><br>${yLab}: %{y:.2f}<br>${xLab}: %{x:.2f}<extra></extra>`,
+      marker: {
+        size: 11,
+        color: '#2D4A3E',
+        opacity: 0.8,
+        line: { color: '#FFFFFF', width: 1.5 },
+      },
+      name: "States",
+      showlegend: false,
+    },
+  ], {
+    title: {
+      text: `${yLab}  <span style="color:#9CA3AF">vs</span>  ${xLab}`,
+      font: titleFont,
+      x: 0.0, xanchor: "left",
+      y: 0.97, yanchor: "top",
+    },
+    xaxis: {
+      title: { text: xLab, font: axisFont, standoff: 14 },
+      tickfont: tickFont,
+      gridcolor: '#EEF0F4',
+      zerolinecolor: '#E5E7EB',
+      linecolor: '#E5E7EB',
+      ticks: 'outside', tickcolor: '#E5E7EB', ticklen: 4,
+    },
+    yaxis: {
+      title: { text: yLab, font: axisFont, standoff: 14 },
+      tickfont: tickFont,
+      gridcolor: '#EEF0F4',
+      zerolinecolor: '#E5E7EB',
+      linecolor: '#E5E7EB',
+      ticks: 'outside', tickcolor: '#E5E7EB', ticklen: 4,
+    },
+    margin: { t: 56, b: 60, l: 70, r: 24 },
+    plot_bgcolor: '#FFFFFF',
+    paper_bgcolor: '#FFFFFF',
+    hoverlabel: {
+      bgcolor: '#FFFFFF',
+      bordercolor: '#E5E7EB',
+      font: { family: 'Source Sans 3, sans-serif', size: 13, color: '#1A1D23' },
+    },
+  }, {
+    responsive: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d", "toggleSpikelines"],
+  });
+
+  renderTable(xVar, yVar);
+  renderSidebar();
+}
+
+function renderTable(xVar, yVar) {
+  const cols = ["State"];
+  if (xVar !== "State") cols.push(xVar);
+  if (yVar !== "State" && yVar !== xVar) cols.push(yVar);
+
+  let html = "<table><thead><tr>";
+  for (const c of cols) html += `<th>${displayName(c)}</th>`;
+  html += "</tr></thead><tbody>";
+  for (const row of DATA) {
+    html += "<tr>";
+    for (const c of cols) {
+      let v = row[c];
+      if (typeof v === "number" && unitConfig[c]) v = v * unitConfig[c].scale;
+      if (typeof v === "number") v = v.toLocaleString(undefined, { maximumFractionDigits: 3 });
+      html += `<td>${v ?? ""}</td>`;
+    }
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  document.getElementById("dataTable").innerHTML = html;
+  document.getElementById("rowCount").textContent = `${DATA.length} rows · ${cols.length} columns`;
+}
+
+// ============================================================
+//  Sidebar collapse
+// ============================================================
+function initSidebarToggle() {
+  const layout = document.getElementById('layout');
+  const btn = document.getElementById('sidebarToggle');
+  const KEY = 'correlationExplorer.sidebarCollapsed';
+
+  const saved = localStorage.getItem(KEY) === '1';
+  if (saved) {
+    layout.classList.add('sidebar-collapsed');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+
+  btn.addEventListener('click', () => {
+    const collapsed = layout.classList.toggle('sidebar-collapsed');
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    localStorage.setItem(KEY, collapsed ? '1' : '0');
+    // nudge Plotly so the chart resizes into the new width
+    requestAnimationFrame(() => {
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 240);
+    });
+  });
+}
+
+async function main() {
+  try {
+    const resp = await fetch("dataset.csv");
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    DATA = parseCSV(text);
+  } catch (e) {
+    document.body.innerHTML =
+      `<div style="padding:32px;color:#A8472A;font-family:'IBM Plex Sans',sans-serif">
+        <h3 style="font-weight:600">Could not load dataset.csv</h3>
+        <p>${e.message}</p>
+        <p>If you opened this file directly (file://), browsers block fetch. Serve the folder with a local server (<code>python -m http.server</code>), or deploy to GitHub Pages.</p>
+      </div>`;
+    return;
+  }
+
+  const sample = DATA[0] ?? {};
+  NUMERIC_COLS = Object.keys(sample).filter(k =>
+    k !== "State" && k !== "state" && typeof sample[k] === "number"
+  );
+
+  populateSelects();
+  initSidebarToggle();
+  update();
+}
+
+main();
+</script>
+</body>
+</html>
