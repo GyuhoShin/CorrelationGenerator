@@ -397,6 +397,12 @@
     text-wrap: pretty;
   }
   .footer p { margin: 0; }
+  .footer a {
+    color: inherit;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 3px;
+  }
+  .footer a:hover { color: var(--primary); text-decoration-color: var(--primary); }
   .footer .src-label {
     display: block;
     font-weight: 600;
@@ -501,7 +507,7 @@
       </div>
       <div>
         <span class="src-label">Author</span>
-        <p class="author"><strong>Shin Gyuho</strong> — Ph.D. Candidate &amp; Instructor, Department of Sociology, Stony Brook University.</p>
+        <p class="author"><a href="https://gyuhoshin.github.io/" target="_blank" rel="noopener noreferrer"><strong>Shin Gyuho</strong></a> — Ph.D. Candidate &amp; Instructor, Department of Sociology, Stony Brook University.</p>
       </div>
     </div>
   </main>
